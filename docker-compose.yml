@@ -27,8 +27,6 @@ services:
       - pgdb
     ports:
       - 2379:2379
-    deploy:
-      replicas: 1
 
   etcd-01:
     image: quay.io/coreos/etcd:v3.2.17
@@ -48,8 +46,6 @@ services:
       - etcd-01vol:/data.etcd
     networks:
       - pgdb
-    deploy:
-      replicas: 1
 
   etcd-02:
     image: quay.io/coreos/etcd:v3.2.17
@@ -69,21 +65,12 @@ services:
       - etcd-02vol:/data.etcd
     networks:
       - pgdb
-    deploy:
-      replicas: 1
 
   sentinel:
     image: sorintlab/stolon:master-pg10
     command: gosu stolon stolon-sentinel --cluster-name stolon-cluster --store-backend=etcdv3 --store-endpoints http://etcd-00:2379,http://etcd-01:2379,http://etcd-02:2379 --log-level info
     networks:
       - pgdb
-    deploy:
-      replicas: 2
-      update_config:
-        parallelism: 1
-        delay: 30s
-        order: stop-first
-        failure_action: pause
 
   keeper1:
     image: sorintlab/stolon:master-pg10
@@ -98,10 +85,6 @@ services:
     command: gosu stolon stolon-keeper --pg-listen-address keeper1 --pg-repl-username replication --uid keeper1 --pg-su-username postgres --pg-su-passwordfile /run/secrets/pgsql --pg-repl-passwordfile /run/secrets/pgsql_repl --data-dir /var/lib/postgresql/data --cluster-name stolon-cluster --store-backend=etcdv3 --store-endpoints http://etcd-00:2379,http://etcd-01:2379,http://etcd-02:2379 --log-level info
     networks:
       - pgdb
-    deploy:
-      replicas: 1
-#      placement:
-#        constraints: [node.labels.nodename == node1]
 
   keeper2:
     image: sorintlab/stolon:master-pg10
@@ -116,10 +99,6 @@ services:
     command: gosu stolon stolon-keeper --pg-listen-address keeper2 --pg-repl-username replication --uid keeper2 --pg-su-username postgres --pg-su-passwordfile /run/secrets/pgsql --pg-repl-passwordfile /run/secrets/pgsql_repl --data-dir /var/lib/postgresql/data --cluster-name stolon-cluster --store-backend=etcdv3 --store-endpoints http://etcd-00:2379,http://etcd-01:2379,http://etcd-02:2379 --log-level info
     networks:
       - pgdb
-    deploy:
-      replicas: 1
-#      placement:
-#        constraints: [node.labels.nodename == node2]
 
   proxy:
     image: sorintlab/stolon:master-pg10
@@ -128,13 +107,6 @@ services:
       - pgdb
     ports:
       - 5432:5432
-    deploy:
-      replicas: 2
-      update_config:
-        parallelism: 1
-        delay: 30s
-        order: stop-first
-        failure_action: rollback
 
 volumes:
   etcd-00vol:
