@@ -1,0 +1,151 @@
+version: '3.4'
+
+secrets:
+  pgsql:
+    file: ./etc/secrets/pgsql
+  pgsql_repl:
+    file: ./etc/secrets/pgsql_repl
+
+services:
+  etcd-00:
+    image: quay.io/coreos/etcd:v3.2.17
+    hostname: etcd-00
+    command:
+      - etcd
+      - --name=etcd-00
+      - --data-dir=data.etcd
+      - --advertise-client-urls=http://etcd-00:2379
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --initial-advertise-peer-urls=http://etcd-00:2380
+      - --listen-peer-urls=http://0.0.0.0:2380
+      - --initial-cluster=etcd-00=http://etcd-00:2380,etcd-01=http://etcd-01:2380,etcd-02=http://etcd-02:2380
+      - --initial-cluster-state=new
+      - --initial-cluster-token=${ETCD_TOKEN}
+    volumes:
+      - etcd-00vol:/data.etcd
+    networks:
+      - pgdb
+    ports:
+      - 2379:2379
+    deploy:
+      replicas: 1
+
+  etcd-01:
+    image: quay.io/coreos/etcd:v3.2.17
+    hostname: etcd-01
+    command:
+      - etcd
+      - --name=etcd-01
+      - --data-dir=data.etcd
+      - --advertise-client-urls=http://etcd-01:2379
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --initial-advertise-peer-urls=http://etcd-01:2380
+      - --listen-peer-urls=http://0.0.0.0:2380
+      - --initial-cluster=etcd-00=http://etcd-00:2380,etcd-01=http://etcd-01:2380,etcd-02=http://etcd-02:2380
+      - --initial-cluster-state=new
+      - --initial-cluster-token=${ETCD_TOKEN}
+    volumes:
+      - etcd-01vol:/data.etcd
+    networks:
+      - pgdb
+    deploy:
+      replicas: 1
+
+  etcd-02:
+    image: quay.io/coreos/etcd:v3.2.17
+    hostname: etcd-02
+    command:
+      - etcd
+      - --name=etcd-02
+      - --data-dir=data.etcd
+      - --advertise-client-urls=http://etcd-02:2379
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --initial-advertise-peer-urls=http://etcd-02:2380
+      - --listen-peer-urls=http://0.0.0.0:2380
+      - --initial-cluster=etcd-00=http://etcd-00:2380,etcd-01=http://etcd-01:2380,etcd-02=http://etcd-02:2380
+      - --initial-cluster-state=new
+      - --initial-cluster-token=${ETCD_TOKEN}
+    volumes:
+      - etcd-02vol:/data.etcd
+    networks:
+      - pgdb
+    deploy:
+      replicas: 1
+
+  sentinel:
+    image: sorintlab/stolon:master-pg10
+    command: gosu stolon stolon-sentinel --cluster-name stolon-cluster --store-backend=etcdv3 --store-endpoints http://etcd-00:2379,http://etcd-01:2379,http://etcd-02:2379 --log-level debug
+    networks:
+      - pgdb
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: stop-first
+        failure_action: pause
+
+  keeper1:
+    image: sorintlab/stolon:master-pg10
+    hostname: keeper1
+    environment:
+      - PGDATA=/var/lib/postgresql/data
+    volumes:
+      - pgkeeper1:/var/lib/postgresql/data
+    secrets:
+      - pgsql
+      - pgsql_repl
+    command: gosu stolon stolon-keeper --pg-listen-address keeper1 --pg-repl-username replication --uid keeper1 --pg-su-username postgres --pg-su-passwordfile /run/secrets/pgsql --pg-repl-passwordfile /run/secrets/pgsql_repl --data-dir /var/lib/postgresql/data --cluster-name stolon-cluster --store-backend=etcdv3 --store-endpoints http://etcd-00:2379,http://etcd-01:2379,http://etcd-02:2379 --log-level debug
+    networks:
+      - pgdb
+    deploy:
+      replicas: 1
+#      placement:
+#        constraints: [node.labels.nodename == node1]
+
+  keeper2:
+    image: sorintlab/stolon:master-pg10
+    hostname: keeper2
+    environment:
+      - PGDATA=/var/lib/postgresql/data
+    volumes:
+      - pgkeeper2:/var/lib/postgresql/data
+    secrets:
+      - pgsql
+    command: gosu stolon stolon-keeper --pg-listen-address keeper2 --pg-repl-username replication --uid keeper2 --pg-su-username postgres --pg-su-passwordfile /run/secrets/pgsql --pg-repl-passwordfile /run/secrets/pgsql --data-dir /var/lib/postgresql/data --cluster-name stolon-cluster --store-backend=etcdv3 --store-endpoints http://etcd-00:2379,http://etcd-01:2379,http://etcd-02:2379 --log-level debug
+    networks:
+      - pgdb
+    deploy:
+      replicas: 1
+#      placement:
+#        constraints: [node.labels.nodename == node2]
+
+  proxy:
+    image: sorintlab/stolon:master-pg10
+    command: gosu stolon stolon-proxy --listen-address 0.0.0.0 --cluster-name stolon-cluster --store-backend=etcdv3 --store-endpoints http://etcd-00:2379,http://etcd-01:2379,http://etcd-02:2379 --log-level info
+    networks:
+      - pgdb
+    ports:
+      - 5432:5432
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: stop-first
+        failure_action: rollback
+
+volumes:
+  etcd-00vol:
+    driver: local
+  etcd-01vol:
+    driver: local
+  etcd-02vol:
+    driver: local
+  pgkeeper1:
+    driver: local
+  pgkeeper2:
+    driver: local
+
+networks:
+  pgdb:
