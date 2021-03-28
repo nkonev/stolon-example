@@ -10,6 +10,7 @@ Await appearing two nodes in status
 `password1`
 5. `create table test (id int primary key not null, value text not null);`
 6. `select * from test;`
+`insert into test values (1, 'value1');`
 
 # Shut down
 1. `docker stack rm stolon`
@@ -18,3 +19,9 @@ Await appearing two nodes in status
 # Check logs
 `docker service logs -f stolon_keeper1`
 `docker service logs -f stolon_keeper2`
+
+# Check data replication on keeper1
+`docker exec -it $(docker ps | grep keeper1 | awk '{print $1}' | head -n 1) psql postgres -U postgres -W -h /tmp`
+
+# Check data replication on keeper2
+`docker exec -it $(docker ps | grep keeper2 | awk '{print $1}' | head -n 1) psql postgres -U postgres -W -h /tmp`
