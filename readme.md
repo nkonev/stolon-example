@@ -1,6 +1,6 @@
 # Set up
 1. `docker stack deploy --compose-file docker-compose-all.yml stolon`
-2. `docker exec -it stolon_proxy.1.x59gb8eboltqfc0q6pwf6fj6m bash`
+2. `docker exec -it $(docker ps | grep stolon_proxy | awk '{print $1}' | head -n 1) bash` e. g. `docker exec -it stolon_proxy.1.x59gb8eboltqfc0q6pwf6fj6m bash`
 3. `stolonctl --cluster-name=stolon-cluster --store-backend=etcdv3 --store-endpoints http://etcd-00:2379,http://etcd-01:2379,http://etcd-02:2379 init`
 4. `psql --host localhost --port 5432 postgres -U postgres -W`
 `password1`
