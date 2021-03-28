@@ -20,7 +20,7 @@ services:
       - --listen-peer-urls=http://0.0.0.0:2380
       - --initial-cluster=etcd-00=http://etcd-00:2380,etcd-01=http://etcd-01:2380,etcd-02=http://etcd-02:2380
       - --initial-cluster-state=new
-      - --initial-cluster-token=${ETCD_TOKEN}
+      - --initial-cluster-token=aToken
     volumes:
       - etcd-00vol:/data.etcd
     networks:
@@ -43,7 +43,7 @@ services:
       - --listen-peer-urls=http://0.0.0.0:2380
       - --initial-cluster=etcd-00=http://etcd-00:2380,etcd-01=http://etcd-01:2380,etcd-02=http://etcd-02:2380
       - --initial-cluster-state=new
-      - --initial-cluster-token=${ETCD_TOKEN}
+      - --initial-cluster-token=aToken
     volumes:
       - etcd-01vol:/data.etcd
     networks:
@@ -64,7 +64,7 @@ services:
       - --listen-peer-urls=http://0.0.0.0:2380
       - --initial-cluster=etcd-00=http://etcd-00:2380,etcd-01=http://etcd-01:2380,etcd-02=http://etcd-02:2380
       - --initial-cluster-state=new
-      - --initial-cluster-token=${ETCD_TOKEN}
+      - --initial-cluster-token=aToken
     volumes:
       - etcd-02vol:/data.etcd
     networks:
